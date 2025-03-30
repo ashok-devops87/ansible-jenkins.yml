@@ -1,0 +1,61 @@
+---
+- name: install, configure and start jenkins
+  hosts: 10.40.1.115
+  become: yes
+  become_user: root
+  become_method: sudo
+  gather_facts: true
+  tasks:
+   - name: install jenkins for only Debian os family
+     block:
+     - name: setup jenkins hostname to the server
+       hostname:
+        name: jenkins-master
+       tags:
+        - jenkinshostname
+     - name: add hostname permanantly
+       lineinfile:
+        path: /etc/hostname
+        regexp: "ansible-*"
+        line: jenkins-master
+       tags:
+         - setuphostname-permanant
+     - name: install java
+       apt:
+        name: openjdk-17-jdk
+        state: present
+       tags:
+         - installjava
+     - name: get jenkins repo key
+       get_url:
+        url: https://pkg.jenkins.io/debian/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+       tags:
+         - addjekins-key
+     - name: add jenkins apt repository
+       lineinfile:
+        path: /etc/apt/sources.list.d/jenkins.list
+        line: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]
+               https://pkg.jenkins.io/debian-stable binary/"
+       tags:
+         - addjenkins-repo
+        create: yes
+     - name: update packes using apt
+       apt:
+        update_cache: yes
+       tags:
+         - updatecache
+     - name: install jenkins
+       apt:
+        name: jenkins
+        state: present
+       tags:
+         - installjenkins
+     - name: start jenkins service
+       service:
+        name: jenkins
+        state: started
+        enabled: true
+       tags:
+         - startenable-jenkins
+     when: ansible_os_family == "Debian"
